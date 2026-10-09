@@ -5,7 +5,7 @@ Strands Decider 2B Inference Engine & Client
 Supports:
 1. LIVE Endpoint: Calls `strands-decider serve` (or SageMaker/Bedrock endpoint)
    via HTTP POST `/score` for real token logits and measured latency.
-2. SIMULATION Fallback: Explicit calibrated heuristic mode (`is_mock=True`)
+2. SIMULATION Fallback: Explicit calibrated heuristic mode (`is_live_model=False`)
    for local testing prior to live cluster launch.
 """
 
@@ -13,6 +13,7 @@ import time
 import math
 import random
 import re
+import logging
 import requests
 from typing import Dict, List, Tuple, Any, Optional
 from decider_patterns.cloud_guardrail_pattern import (
@@ -26,6 +27,8 @@ from decider_patterns.model_routing_pattern import (
     RoutingDecision,
     RoutingDestination,
 )
+
+logger = logging.getLogger("StrandsDeciderEngine")
 
 
 class StrandsDeciderEngine:
@@ -50,8 +53,10 @@ class StrandsDeciderEngine:
             res = requests.get(f"{self.endpoint_url}/health", timeout=0.5)
             if res.status_code == 200:
                 self.is_live_endpoint = True
-        except Exception:
+                logger.info(f"Connected to live Strands Decider server at {self.endpoint_url}")
+        except Exception as e:
             self.is_live_endpoint = False
+            logger.debug(f"Live Strands Decider server not detected at {self.endpoint_url} ({e}); using simulation fallback.")
 
     def score_options(
         self, 
@@ -84,7 +89,10 @@ class StrandsDeciderEngine:
                     scores = data.get("scores", {})
                     best_opt = max(scores, key=scores.get)
                     return best_opt, scores[best_opt], scores, elapsed_ms, True
-            except Exception:
+                else:
+                    logger.warning(f"Strands server returned HTTP {response.status_code}: {response.text}")
+            except Exception as e:
+                logger.warning(f"Failed to score options via live Strands endpoint: {e}. Falling back to simulation mode.")
                 self.is_live_endpoint = False
 
         # Explicit High-Fidelity Simulation Fallback (with real timer measurement)
@@ -100,13 +108,13 @@ class StrandsDeciderEngine:
         raw_logits: Dict[str, float] = {}
 
         for opt in options:
-            opt_lower = opt.lower()
             logit = 1.0
 
-            # Guardrail evaluation heuristics (with strict regex word boundary checks)
+            # Guardrail evaluation heuristics (with strict boundary regex matching)
             is_critical = "blast radius 'critical'" in q_lower or "blast radius 'high'" in q_lower
             is_destructive = ("unauthorized" in q_lower) or ("drop table" in q_lower) or (("delete" in q_lower) and ("force" in q_lower))
-            is_safe_read = any(k in q_lower for k in ["flush", "read", "scale", "status"]) and not is_critical
+            # Word boundary regex ensuring "thread" or "already" don't falsely match "read"
+            is_safe_read = bool(re.search(r'(?:\b|_)(flush|read|scale|status)(?:\b|_)', q_lower)) and not is_critical
 
             if is_destructive:
                 if opt == GuardrailAction.DENY.value:
@@ -132,7 +140,7 @@ class StrandsDeciderEngine:
             if "injection" in q_lower or "ignore previous" in q_lower or "system prompt" in q_lower:
                 if opt == RoutingDestination.SECURITY_BLOCK.value:
                     logit += 5.0
-            elif bool(re.search(r'\b(cpu|status|metric|alarm|flush)\b', q_lower)):
+            elif bool(re.search(r'(?:\b|_)(cpu|status|metric|alarm|flush)(?:\b|_)', q_lower)):
                 if opt == RoutingDestination.DETERMINISTIC_TOOL.value:
                     logit += 4.0
             elif "explain" in q_lower or "root cause" in q_lower or "post-mortem" in q_lower:
@@ -175,6 +183,7 @@ class StrandsDeciderEngine:
             reasoning=reasoning_map.get(chosen_action, "Evaluated by Strands Decider 2B"),
             decision_latency_ms=latency_ms,
             candidate_scores=scores,
+            is_live_model=is_live,
         )
 
     def evaluate_route(self, query: str) -> RoutingDecision:
@@ -196,8 +205,9 @@ class StrandsDeciderEngine:
         return RoutingDecision(
             destination=RoutingDestination(chosen_route),
             confidence=confidence,
-            reasoning=f"Routed to {chosen_route} via Strands Decider 2B.",
+            reasoning=f"Routed to {chosen_route} via Strands Decider 2B (Live: {is_live}).",
             estimated_cost_usd=cost_map.get(chosen_route, 0.001),
             decision_latency_ms=latency_ms,
             candidate_scores=scores,
+            is_live_model=is_live,
         )

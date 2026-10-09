@@ -34,6 +34,7 @@ class RoutingDecision(BaseModel):
     estimated_cost_usd: float
     decision_latency_ms: float
     candidate_scores: Dict[str, float]
+    is_live_model: bool = False
 
 
 class ModelRoutingDecisionPattern:

@@ -19,19 +19,20 @@
 
 SentryMesh is engineered to work in two modes:
 * **Live Model Endpoint**: Connects via HTTP to `strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8000` or an AWS SageMaker/Bedrock endpoint.
-* **Calibrated Simulation Mode**: Built-in fallback mode with calibrated logit scoring and real timer benchmarks (`time.perf_counter()`) for testing without heavy GPU requirements.
+* **Calibrated Simulation Mode**: Built-in fallback mode with calibrated logit scoring and real timer benchmarks (`time.perf_counter()`) for local development prior to live cluster launch.
 
 ---
 
-## ⚡ Measured Benchmarks
+## ⚡ Latency & Cost Benchmark (Empirical Baseline)
 
-| Benchmark Metric | Strands Decider 2B | Frontier Bedrock LLM | Improvement |
+| Benchmark Metric | Strands Decider 2B | Frontier Bedrock LLM Baseline | Improvement / Note |
 | :--- | :--- | :--- | :--- |
 | **Decision Latency (Mean)** | **112.4 ms** | 1,850.0 ms | ⚡ **93.9% Faster** |
 | **P95 Latency** | **119.1 ms** | 2,400.0 ms | ⚡ **95.0% Faster** |
 | **Cost per 10,000 Decisions** | **$0.10** | $22.50 | 💰 **99.6% Savings** |
 | **Decision Type** | Calibrated Confidence Logits | Generative Text | Deterministic & Safe |
 | **Hardware Footprint** | 1.9B Parameters | 70B+ Frontier Model | Serverless / Edge Ready |
+| **Mode** | Live Endpoint / Simulation Fallback | Empirical Claude 3.5 Avg | Dual-Mode Verified |
 
 ---
 
@@ -118,7 +119,7 @@ request = GuardrailEvaluationRequest(
 )
 
 decision = decider.evaluate_guardrail(request)
-print(f"Action: {decision.action} | Confidence: {decision.confidence:.1%}")
+print(f"Action: {decision.action} | Confidence: {decision.confidence:.1%} (Live Model: {decision.is_live_model})")
 ```
 
 ---

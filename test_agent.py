@@ -52,11 +52,19 @@ def test_agent_pipeline():
         result = agent.triage_incident(inc)
 
         print(f"-> Strands Decider 2B Decision : {result.decider_action} (Confidence: {result.decider_confidence_pct}) in {result.decider_latency_ms}ms")
+        print(f"-> Live Model Flag             : is_live_model={result.is_live_model}, is_live_bedrock={result.is_live_bedrock}")
         print(f"-> Candidate Scores            : {result.decider_candidate_scores}")
         print(f"-> Execution Status            : {result.status}")
         print(f"-> Total Pipeline Latency      : {result.total_pipeline_latency_ms}ms")
         print(f"-> Cost Savings vs Pure LLM    : {result.cost_savings_vs_pure_llm_pct}%")
-        print(f"-> Bedrock Synthesis Preview   : {result.bedrock_synthesis.get('output_text', '')[:100]}...\n")
+        print(f"-> Bedrock Synthesis Preview   : {result.bedrock_synthesis.get('output_text', '')[:110]}...")
+
+        # If escalated for approval, test human approval execution
+        if result.status == "ESCALATED_FOR_APPROVAL":
+            print("   -> [Human-in-the-Loop] Simulating DevOps engineer manual signoff...")
+            approval_res = agent.approve_incident(inc.incident_id, operator_id="sre-lead@aws")
+            print(f"   -> [Sign-off Result] {approval_res['execution_result'].get('message')}")
+        
         print("-" * 70)
 
 

@@ -87,10 +87,12 @@ def run_benchmark(iterations: int = 50):
         ["Cost per 10,000 Decisions", f"${cost_decider_10k:.2f}", f"${cost_llm_10k:.2f}", f"{cost_improvement}% Savings"],
         ["Mean Decision Confidence", f"{avg_confidence:.1%}", "N/A (Prose text)", "Calibrated Logits"],
         ["Hardware Footprint", "1.9B Parameters", "70B+ Frontier", "Runs on Edge/Lambda"],
+        ["Benchmark Mode", f"Simulated (is_live={decider.is_live_endpoint})", "Bedrock Claude 3.5 Baseline", "Empirical Estimation"],
     ]
 
-    headers = ["Benchmark Metric", "Strands Decider 2B", "Frontier Bedrock LLM", "Improvement"]
+    headers = ["Benchmark Metric", "Strands Decider 2B", "Frontier Bedrock LLM", "Improvement / Note"]
     print(tabulate(table_data, headers=headers, tablefmt="github"))
+    print("\n* Note: Baseline reflects empirical Bedrock Claude 3.5 Sonnet averages. Real hardware benchmarks sync upon live cluster launch.")
     print("\n[SUCCESS] Benchmark completed successfully.\n")
 
 

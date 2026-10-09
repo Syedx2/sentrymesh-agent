@@ -45,6 +45,7 @@ class GuardrailDecision(BaseModel):
     reasoning: str
     decision_latency_ms: float
     candidate_scores: Dict[str, float]
+    is_live_model: bool = False
 
 
 # ---------------------------------------------------------------------------
