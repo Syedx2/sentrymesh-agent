@@ -8,7 +8,13 @@ Generates metrics and ASCII tables for the AWS Builder Center article.
 """
 
 import time
+import os
+import sys
 import statistics
+
+# Ensure repo root is in python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 try:
     from tabulate import tabulate
 except ImportError:

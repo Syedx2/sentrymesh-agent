@@ -5,6 +5,12 @@ SentryMesh Agent End-to-End Test Suite
 """
 
 import json
+import os
+import sys
+
+# Ensure repo root is in python path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 from agent.sentry_agent import SentryMeshAgent, IncidentPayload
 
 
