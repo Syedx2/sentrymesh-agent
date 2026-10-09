@@ -72,8 +72,10 @@ class SentryMeshAgent:
         """
         pipeline_start = time.perf_counter()
 
+        # Derive blast radius from explicit safe-list — prevents substring false matches
+        SAFE_AUTORUN_TOOLS = {"flush_redis_cluster_cache", "scale_ecs_autoscaling_group"}
         blast_radius = "high" if incident.severity in ["P1-Critical", "P0"] else "medium"
-        if "flush" in incident.proposed_remediation_tool or "read" in incident.proposed_remediation_tool:
+        if incident.proposed_remediation_tool in SAFE_AUTORUN_TOOLS:
             blast_radius = "low"
 
         guardrail_req = GuardrailEvaluationRequest(

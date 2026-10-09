@@ -136,19 +136,23 @@ class StrandsDeciderEngine:
             elif opt == GuardrailAction.GUIDE.value:
                 logit += 0.8
 
-            # Model routing heuristics
-            if "injection" in q_lower or "ignore previous" in q_lower or "system prompt" in q_lower:
-                if opt == RoutingDestination.SECURITY_BLOCK.value:
-                    logit += 5.0
-            elif bool(re.search(r'(?:\b|_)(cpu|status|metric|alarm|flush)(?:\b|_)', q_lower)):
-                if opt == RoutingDestination.DETERMINISTIC_TOOL.value:
-                    logit += 4.0
-            elif "explain" in q_lower or "root cause" in q_lower or "post-mortem" in q_lower:
-                if opt == RoutingDestination.BEDROCK_GENERATIVE.value:
-                    logit += 4.2
-            elif "cached" in q_lower or "runbook" in q_lower:
-                if opt == RoutingDestination.CACHE.value:
-                    logit += 3.7
+            # Model routing heuristics: Only applied when the candidate option
+            # is actually a routing destination (prevents cross-contamination
+            # when scoring guardrail options like Proceed/Deny/Guide/Confirm)
+            routing_option_names = {d.value for d in RoutingDestination}
+            if opt in routing_option_names:
+                if "injection" in q_lower or "ignore previous" in q_lower or "system prompt" in q_lower:
+                    if opt == RoutingDestination.SECURITY_BLOCK.value:
+                        logit += 5.0
+                elif bool(re.search(r'(?:\b|_)(cpu|status|metric|alarm|flush)(?:\b|_)', q_lower)):
+                    if opt == RoutingDestination.DETERMINISTIC_TOOL.value:
+                        logit += 4.0
+                elif "explain" in q_lower or "root cause" in q_lower or "post-mortem" in q_lower:
+                    if opt == RoutingDestination.BEDROCK_GENERATIVE.value:
+                        logit += 4.2
+                elif "cached" in q_lower or "runbook" in q_lower:
+                    if opt == RoutingDestination.CACHE.value:
+                        logit += 3.7
 
             logit += random.uniform(-0.08, 0.08)
             raw_logits[opt] = logit

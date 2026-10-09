@@ -8,9 +8,12 @@ generative reasoning and root-cause analysis when handed off by Strands Decider 
 
 import json
 import time
+import logging
 from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
+
+logger = logging.getLogger("BedrockAgentClient")
 
 
 class BedrockAgentClient:
@@ -19,7 +22,7 @@ class BedrockAgentClient:
     """
 
     DEFAULT_MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
-    FALLBACK_MODEL_ID = "amazon.nova-pro-v1:0"
+    FALLBACK_MODEL_ID = "us.amazon.nova-lite-v1:0"
 
     def __init__(self, region_name: str = "us-east-1", model_id: Optional[str] = None):
         self.region_name = region_name
@@ -33,7 +36,11 @@ class BedrockAgentClient:
                 service_name="bedrock-runtime",
                 region_name=self.region_name,
             )
-        except (NoCredentialsError, Exception):
+        except NoCredentialsError:
+            logger.warning("AWS credentials not found. Bedrock client will run in simulation mode.")
+            self.bedrock_runtime = None
+        except Exception as e:
+            logger.warning(f"Failed to initialize Bedrock client: {e}. Running in simulation mode.")
             self.bedrock_runtime = None
 
     def generate_incident_synthesis(self, incident_title: str, telemetry: Dict[str, Any], guardrail_action: str) -> Dict[str, Any]:
@@ -53,23 +60,16 @@ class BedrockAgentClient:
         # 1. Live Bedrock invocation if credentials are configured
         if self.bedrock_runtime:
             try:
-                body = json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 512,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                })
-                response = self.bedrock_runtime.invoke_model(
-                    body=body,
+                response = self.bedrock_runtime.converse(
                     modelId=self.model_id,
-                    accept="application/json",
-                    contentType="application/json",
+                    messages=[{"role": "user", "content": [{"text": prompt}]}],
+                    inferenceConfig={"maxTokens": 512, "temperature": 0.2},
                 )
-                response_body = json.loads(response.get("body").read())
-                output_text = response_body["content"][0]["text"]
+                output_text = response["output"]["message"]["content"][0]["text"]
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                input_tokens = response_body.get("usage", {}).get("input_tokens", 220)
-                output_tokens = response_body.get("usage", {}).get("output_tokens", 140)
+                usage = response.get("usage", {})
+                input_tokens = usage.get("inputTokens", 220)
+                output_tokens = usage.get("outputTokens", 140)
 
                 return {
                     "output_text": output_text,
@@ -79,8 +79,10 @@ class BedrockAgentClient:
                     "estimated_cost_usd": round((input_tokens * 0.000003) + (output_tokens * 0.000015), 6),
                     "is_live_bedrock": True,
                 }
-            except Exception:
-                pass  # Fall through to dynamic scenario synthesis
+            except ClientError as e:
+                logger.warning(f"Bedrock API error (check model access & region): {e}")
+            except Exception as e:
+                logger.warning(f"Unexpected Bedrock invocation failure: {e}")
 
         # 2. Dynamic Scenario Synthesis for Offline / Mock Testing
         elapsed_ms = round(1650.0 + (time.perf_counter() - start_time) * 1000, 2)
