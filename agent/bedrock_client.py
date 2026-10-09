@@ -8,7 +8,6 @@ generative reasoning and root-cause analysis when handed off by Strands Decider 
 
 import json
 import time
-import os
 from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -48,10 +47,10 @@ class BedrockAgentClient:
             f"Incident: {incident_title}\n"
             f"Telemetry: {json.dumps(telemetry, indent=2)}\n"
             f"Strands Decider 2B Guardrail Status: {guardrail_action}\n\n"
-            f"Provide a concise Root Cause Analysis, Impact Radius, and Future Prevention Strategy in 3 bullet points."
+            f"Provide a concise Root Cause Analysis, Impact Radius, and Future Prevention Strategy."
         )
 
-        # If live Bedrock credentials exist, invoke the live endpoint
+        # 1. Live Bedrock invocation if credentials are configured
         if self.bedrock_runtime:
             try:
                 body = json.dumps({
@@ -80,22 +79,39 @@ class BedrockAgentClient:
                     "estimated_cost_usd": round((input_tokens * 0.000003) + (output_tokens * 0.000015), 6),
                     "is_live_bedrock": True,
                 }
-            except Exception as e:
-                pass  # Fall through to high-fidelity simulation
+            except Exception:
+                pass  # Fall through to dynamic scenario synthesis
 
-        # High-fidelity synthesis for local benchmark & testing
+        # 2. Dynamic Scenario Synthesis for Offline / Mock Testing
         elapsed_ms = round(1650.0 + (time.perf_counter() - start_time) * 1000, 2)
-        simulated_text = (
-            f"### Root Cause Analysis (Bedrock Synthesis)\n"
-            f"- **Root Cause**: Sudden query throughput spike (+450%) saturated connection pool on primary read-replica.\n"
-            f"- **Impact Radius**: Limited to staging catalog microservice; no data loss or customer PII exposure.\n"
-            f"- **Remediation & Prevention**: Strands Decider 2B auto-quarantined the offending traffic and flushed cache. Recommend enabling Auto-Scaling read-replicas with min threshold of 3."
-        )
+        
+        if "iam" in incident_title.lower() or "key" in incident_title.lower():
+            simulated_text = (
+                f"### Root Cause Analysis (Bedrock Synthesis [Simulated])\n"
+                f"- **Root Cause**: AWS GuardDuty detected anomalous API invocation from unrecognized IP with leaked access key.\n"
+                f"- **Impact Radius**: IAM credentials targeted; no data exfiltration confirmed.\n"
+                f"- **Remediation & Prevention**: Strands Decider 2B dispatched human-in-the-loop quarantine payload. Recommend enabling AWS Secrets Manager automatic rotation."
+            )
+        elif "deadlock" in incident_title.lower() or "aurora" in incident_title.lower():
+            simulated_text = (
+                f"### Root Cause Analysis (Bedrock Synthesis [Simulated])\n"
+                f"- **Root Cause**: High transaction concurrency produced cascading deadlocks across worker nodes.\n"
+                f"- **Impact Radius**: Aurora primary instance CPU spiked to 99%; read queries unaffected.\n"
+                f"- **Remediation & Prevention**: Strands Decider 2B halted destructive database termination. Restarted deadlocked worker sessions safely."
+            )
+        else:
+            simulated_text = (
+                f"### Root Cause Analysis (Bedrock Synthesis [Simulated])\n"
+                f"- **Root Cause**: Sudden query throughput spike saturated connection pool and in-memory cache.\n"
+                f"- **Impact Radius**: Limited to session cache microservice; no data loss.\n"
+                f"- **Remediation & Prevention**: Strands Decider 2B auto-verified safe cache flush. Recommend scaling Redis replica count."
+            )
+
         return {
             "output_text": simulated_text,
             "model_id": self.model_id,
             "latency_ms": elapsed_ms,
-            "tokens_used": 360,
-            "estimated_cost_usd": 0.00396,
+            "tokens_used": 340,
+            "estimated_cost_usd": 0.00374,
             "is_live_bedrock": False,
         }

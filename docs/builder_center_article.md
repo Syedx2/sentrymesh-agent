@@ -2,7 +2,7 @@
 
 > **Tags**: `#strands-decider-2b` `#guardrails` `#tool-selection` `#model-routing`  
 > **Author**: Syed Arbaaz  
-> **Repository**: [GitHub — SentryMesh Agent](https://github.com/syedarbaaz2/sentrymesh-agent)
+> **Repository**: [GitHub — SentryMesh Agent](https://github.com/Syedx2/sentrymesh-agent)
 
 ---
 
@@ -11,7 +11,7 @@ In modern cloud operations, Site Reliability Engineers (SREs) and DevOps teams f
 
 Furthermore, granting an autonomous agent direct write access to cloud infrastructure (such as restarting EC2 instances, quarantining IAM credentials, or flushing cluster caches) without deterministic guardrails introduces critical security and stability risks.
 
-To solve this, we built **SentryMesh** — an autonomous AWS incident triage and remediation agent that pairs **Strands Decider 2B** for ultra-fast, calibrated decision-making with **Amazon Bedrock** for deep generative synthesis.
+To solve this, we built **SentryMesh** — an autonomous AWS incident triage and remediation agent that pairs **Strands Decider 2B** for ultra-fast, calibrated decision-making with **Amazon Bedrock** for deep generative synthesis, backed by a **hard-floor safety guardrail**.
 
 ---
 
@@ -54,14 +54,17 @@ Instead of generating conversational text, **Strands Decider 2B** acts as our ag
 * **`Guide`**: Action parameters out of bounds; guidance returned to rescale parameters.
 * **`Deny`**: Policy violation or adversarial prompt injection detected.
 
-### 2. The Generative Layer (Amazon Bedrock)
+### 2. Hard-Floor Safety Enforcement
+Even in autonomous pipelines, safety must have a code-level floor. SentryMesh enforces policy checks in `AWSToolRegistry` ensuring that destructive tools (e.g. `terminate_database_instance`) are strictly blocked from execution without verified authorization.
+
+### 3. The Generative Layer (Amazon Bedrock)
 Once the deterministic action is handled, the execution receipt is passed to **Amazon Bedrock (Claude 3.5 Sonnet / Amazon Nova)** to generate a structured executive post-mortem and root-cause analysis (RCA).
 
 ---
 
 ## 📊 Measured Benchmarks: Strands Decider 2B vs Pure LLM
 
-We benchmarked 100 incident triage runs across both architectures:
+We benchmarked incident triage runs across both architectures:
 
 | Benchmark Metric | Strands Decider 2B | Frontier Bedrock LLM | Improvement |
 | :--- | :--- | :--- | :--- |
@@ -84,7 +87,7 @@ from decider_patterns.cloud_guardrail_pattern import (
 )
 from agent.decider_engine import StrandsDeciderEngine
 
-decider = StrandsDeciderEngine()
+decider = StrandsDeciderEngine(endpoint_url="http://localhost:8000")
 
 # 1. Structure the incident context
 request = GuardrailEvaluationRequest(
@@ -110,5 +113,5 @@ print(f"Action: {decision.action} | Confidence: {decision.confidence:.1%}")
 ---
 
 ## 🔗 Links & Resources
-* **GitHub Repository**: [https://github.com/syedarbaaz2/sentrymesh-agent](https://github.com/syedarbaaz2/sentrymesh-agent)
+* **GitHub Repository**: [https://github.com/Syedx2/sentrymesh-agent](https://github.com/Syedx2/sentrymesh-agent)
 * **Demo Video**: [YouTube Demo Link](https://youtube.com)

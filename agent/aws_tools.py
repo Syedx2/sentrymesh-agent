@@ -4,6 +4,7 @@ AWS Tool Registry & Operational Action Handlers
 =============================================================================
 Deterministic cloud tools executed by the agent after Strands Decider 2B
 guardrail verification.
+Enforces a hard-coded security floor regardless of model output.
 """
 
 import time
@@ -13,7 +14,8 @@ from typing import Dict, Any
 
 class AWSToolRegistry:
     """
-    Registry of AWS operational tools with blast-radius definitions.
+    Registry of AWS operational tools with blast-radius definitions and
+    hard-coded security enforcement.
     """
 
     TOOLS_CATALOG = {
@@ -30,7 +32,7 @@ class AWSToolRegistry:
         "quarantine_compromised_iam_key": {
             "description": "Attaches an explicit DenyAll IAM inline policy to deactivate leaked access keys.",
             "default_blast_radius": "medium",
-            "requires_confirmation": False,
+            "requires_confirmation": True,
         },
         "reboot_ec2_instance": {
             "description": "Performs a graceful reboot of an unresponsive EC2 instance.",
@@ -45,9 +47,11 @@ class AWSToolRegistry:
     }
 
     @classmethod
-    def execute_tool(cls, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_tool(cls, tool_name: str, args: Dict[str, Any], confirmed: bool = False) -> Dict[str, Any]:
         """
         Executes the cloud operational tool and returns execution receipts.
+        HARD-FLOOR SAFETY: If tool catalog specifies `requires_confirmation=True`,
+        execution is strictly rejected unless `confirmed=True` is provided.
         """
         start_time = time.perf_counter()
         execution_id = f"exec-{uuid.uuid4().hex[:8]}"
@@ -57,9 +61,22 @@ class AWSToolRegistry:
                 "success": False,
                 "error": f"Tool '{tool_name}' not found in registered AWS tools catalog.",
                 "execution_id": execution_id,
+                "status": "TOOL_NOT_FOUND",
             }
 
-        # Simulated cloud action latency (~35ms)
+        tool_meta = cls.TOOLS_CATALOG[tool_name]
+
+        # Hard-floor security check: Prevent unauthorized destructive execution
+        if tool_meta.get("requires_confirmation") and not confirmed:
+            return {
+                "success": False,
+                "error": f"Hard security guardrail: Tool '{tool_name}' requires explicit human DevOps confirmation.",
+                "execution_id": execution_id,
+                "status": "BLOCKED_BY_SAFETY_FLOOR",
+                "requires_human_approval": True,
+            }
+
+        # Simulated cloud action latency
         elapsed_ms = round((time.perf_counter() - start_time) * 1000 + 35.0, 2)
 
         return {

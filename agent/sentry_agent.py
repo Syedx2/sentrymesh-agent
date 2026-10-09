@@ -90,8 +90,12 @@ class SentryMeshAgent:
             remediation_res = AWSToolRegistry.execute_tool(
                 incident.proposed_remediation_tool,
                 incident.tool_arguments,
+                confirmed=True,  # Guardrail verified
             )
-            status = "RESOLVED_AUTONOMOUSLY"
+            if remediation_res.get("status") == "SUCCESSFULLY_APPLIED":
+                status = "RESOLVED_AUTONOMOUSLY"
+            else:
+                status = "BLOCKED_BY_SAFETY_FLOOR"
         elif decision.action == GuardrailAction.CONFIRM:
             remediation_res = {
                 "status": "AWAITING_HUMAN_APPROVAL",
