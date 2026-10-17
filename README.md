@@ -3,7 +3,8 @@
 > **Tags**: `#strands-decider-2b` `#guardrails` `#tool-selection` `#model-routing`  
 > **License**: MIT  
 > **Author**: Syed Arbaaz  
-> **GitHub**: [https://github.com/Syedx2/sentrymesh-agent](https://github.com/Syedx2/sentrymesh-agent)
+> **GitHub**: [https://github.com/Syedx2/sentrymesh-agent](https://github.com/Syedx2/sentrymesh-agent)  
+> **Live Web Demo**: [https://syedx2.github.io/sentrymesh-agent/](https://syedx2.github.io/sentrymesh-agent/)
 
 ---
 

@@ -114,4 +114,5 @@ print(f"Action: {decision.action} | Confidence: {decision.confidence:.1%}")
 
 ## 🔗 Links & Resources
 * **GitHub Repository**: [https://github.com/Syedx2/sentrymesh-agent](https://github.com/Syedx2/sentrymesh-agent)
+* **Live Web Dashboard Demo**: [https://syedx2.github.io/sentrymesh-agent/](https://syedx2.github.io/sentrymesh-agent/)
 * **Demo Video**: [YouTube Demo Link](https://youtube.com)
